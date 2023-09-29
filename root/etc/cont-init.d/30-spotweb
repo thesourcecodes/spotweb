@@ -1,0 +1,63 @@
+#!/usr/bin/with-contenv bash
+
+# display time in logging helper #
+# echo "$(format_date) [INFO] etc etc"
+# echo "$(format_date) [WARNING] etc etc"
+format_date() {
+  # echo is not needed
+  date "+%Y-%m-%d %H:%M:%S"
+}
+
+# create save folder
+if [ ! -d "/config/${gitprojectname}-save" ]; then
+	cd /config
+	mkdir /config/${gitprojectname}-save
+fi
+
+# Restore config from save folder if needed
+if [ ! -f /app/www/${gitprojectname}/${configfile}  ]; then
+	if [ ! -f /config/${gitprojectname}-save/${configfile} ] ; then
+		echo "$(format_date) [WARNING] Saved ${configfile} not found please run ${gitprojectname} setup en restart container: https://thiscontainer"
+	else
+		echo "$(format_date) [INFO] Saved ${configfile}found restoring settings.... Please restart container if you manually copy the ${configfile} file"
+		cp /config/${gitprojectname}-save/${configfile} /app/www/${gitprojectname}/${configfile} 
+	fi
+ else 
+	echo "$(format_date) [INFO] ${configfile} found ${gitprojectname} copying to save folder."
+	cp /app/www/${gitprojectname}/${configfile} /config/${gitprojectname}-save/${configfile} 
+fi
+
+# check if custom cronjob exists if not create one.
+if [ ! -f /config/${gitprojectname}-save/abc ] ; then
+	touch /config/${gitprojectname}-save/customcronjob
+	echo "# min   hour    day     month   weekday command" > /config/${gitprojectname}-save/abc
+	# run cronjob every hour: https://crontab.guru
+	echo "0	*	*	*	*	php /app/www/${gitprojectname}/retrieve.php > /dev/null" >> /config/${gitprojectname}-save/abc
+ else 
+	echo "$(format_date) [INFO] Saved customcronjob found !"
+	#cp /app/www/${gitprojectname}-save/abc /etc/crontabs
+fi
+
+#check if folder for custom startup script is found, if not create one. We need an cronjob to update our spots
+if [ ! -f "/config/custom-cont-init.d/addcustomcronjob" ]; then
+	mkdir /config/custom-cont-init.d
+	touch /config/custom-cont-init.d/addcustomcronjob
+	#chmod +x /config/custom-cont-init.d/cron_retrieve-spots
+	echo "#!/bin/bash" > /config/custom-cont-init.d/addcustomcronjob
+	echo " " >> /config/custom-cont-init.d/addcustomcronjob
+	echo "cp /config/${gitprojectname}-save/abc /etc/crontabs" >> /config/custom-cont-init.d/addcustomcronjob
+	echo "chmod -R 600 /etc/crontabs" >> /config/custom-cont-init.d/addcustomcronjob
+ else
+	echo "$(format_date) [INFO] addcustomcronjob found ! this is a good thing"
+fi
+
+# upgrade the db
+if [ ! -f "/app/www/${gitprojectname}/bin/upgrade-db.php" ]; then
+	echo "$(format_date) [INFO] upgrade-db.php not found, no upgrade needed..."
+else
+	echo "$(format_date) [INFO] upgrade-db.php found.. performing upgrade. If this fails and your dont have a backup of your sql ${gitprojectname} db you may be fuc..d"
+	s6-setuidgid abc php /app/www/${gitprojectname}/bin/upgrade-db.php
+	sleep 3
+	rm -rf /app/www/${gitprojectname}/bin/upgrade-db.php.old
+	mv /app/www/${gitprojectname}/bin/upgrade-db.php /app/www/${gitprojectname}/bin/upgrade-db.php.old
+fi
