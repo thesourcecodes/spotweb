@@ -18,7 +18,7 @@ apk add --no-cache --virtual=build-dependencies \
 	git && \
 echo "Setup Application" && \
 	mkdir -p /app/www && \
-	cd /app && \
+	cd /app/www && \
 	git clone ${giturl} && \
 	chown -R abc:abc /app/${gitprojectname} && \
 echo "**** cleanup ****" && \
