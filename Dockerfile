@@ -20,7 +20,7 @@ echo "Setup Application" && \
 	mkdir -p /app/www && \
 	cd /app/www && \
 	git clone ${giturl} && \
-	chown -R abc:abc /app/${gitprojectname} && \
+	chown -R abc:abc /app/www/${gitprojectname} && \
 echo "**** cleanup ****" && \
 apk del --purge \
     build-dependencies && \
